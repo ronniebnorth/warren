@@ -843,11 +843,12 @@ T.forEach(th => { const a = th.items[0], b = th.items[th.items.length - 1];
 P.forEach((p, i) => { if (p.kind === "back" && i > 0){ const q = P[i - 1];
   s += `<path d="M${x(q.thread)},${y(i - 1)} C${x(q.thread)},${y(i)} ${x(p.thread)},${y(i - 1)} ${x(p.thread)},${y(i)}" stroke="#fff" fill="none" stroke-dasharray="3 3" opacity=".7"/>`; } });
 P.forEach((p, i) => {
-  if (p.gap || i === 0) s += `<line x1="0" x2="${W}" y1="${y(i) - ROW / 2}" y2="${y(i) - ROW / 2}" stroke="#555" stroke-dasharray="6 4"/>`
-    + `<text x="${W - 8}" y="${y(i) - ROW / 2 - 3}" text-anchor="end" style="fill:#b8b8b8;font-size:11px">${esc(p.when.split(",")[0].replace(/ · note.*/, ""))}</text>`;
+  let pre = "";
+  if (p.gap || i === 0){ s += `<line x1="0" x2="${W}" y1="${y(i) - ROW / 2}" y2="${y(i) - ROW / 2}" stroke="#555" stroke-dasharray="6 4"/>`;
+    pre = `<tspan fill="#b8b8b8" font-size="11">${esc(p.when.split(",")[0].replace(/ · note.*/, ""))}</tspan><tspan fill="#666">   </tspan>`; }   // the date, at the start of the day's first row
   s += `<circle cx="${x(p.thread)}" cy="${y(i)}" r="${p.kind === "new" || p.kind === "start" ? 7 : 5}" fill="${C(p.thread)}" stroke="${p.kind === "back" ? "#fff" : "none"}" stroke-width="2" data-i="${i}" style="cursor:pointer"/>`;
   const one = p.show.replace(/\s+/g, " ");
-  s += `<text x="${x(p.thread) + 12}" y="${y(i) + 4}" data-i="${i}" style="cursor:pointer">${esc(one.length > 70 ? one.slice(0, 70) + "…" : one)}</text>`; });
+  s += `<text x="${x(p.thread) + 12}" y="${y(i) + 4}" data-i="${i}" style="cursor:pointer">${pre}<tspan data-i="${i}">${esc(one.length > 70 ? one.slice(0, 70) + "…" : one)}</tspan></text>`; });
 g.innerHTML = s;
 g.onclick = e => { const i = e.target.dataset?.i; if (i !== undefined) showThread(P[+i].thread, +i); };
 function showThread(id, focus, jump){
