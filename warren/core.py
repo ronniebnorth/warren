@@ -758,7 +758,7 @@ h1{font-size:16px;margin:0 0 4px}.sub{color:#b8b8b8;font-size:12px;margin-bottom
 svg text{fill:#e8e8e8;font-size:12px;paint-order:stroke;stroke:#14161a;stroke-width:4px}
 </style></head><body>
 <div id="tree"><h1>__TITLE__</h1>
-<div class="views"><button id="vm">By month</button><button id="vt">Tree</button></div>
+<div class="views"><button id="vm">By month</button><button id="vt">Tree</button><button id="ord" title="Flip the month order"></button></div>
 <div id="tv"><div class="sub">Each line is a thread; indented threads branched off the one above.
 Click one to read it. ↩ = times you came back to it. ▾ folds a branch.</div><div id="t"></div></div>
 <div id="mv"><div class="sub">Each month: what you spent it on, biggest first. "new" = started that month,
@@ -794,8 +794,11 @@ P.forEach((p, i) => { const d = new Date(p.t * 1000), k = d.getFullYear() * 100 
   if (!MONTHS.has(k)) MONTHS.set(k, {label: d.toLocaleString("en-US", {month: "long", year: "numeric"}), first: i, n: 0, th: new Map()});
   const m = MONTHS.get(k); m.n++; const e = m.th.get(p.thread) || {n: 0, first: i}; e.n++; m.th.set(p.thread, e); });
 const born = T.map(t => { const d = new Date(P[t.items[0]].t * 1000); return d.getFullYear() * 100 + d.getMonth(); });
+let newest = localStorage.getItem("thoughts-oldest") !== "1";   // newest month on top unless flipped
 function monthView(){ const box = document.getElementById("m"); box.innerHTML = "";
-  for (const [k, m] of MONTHS){ const rows = [...m.th.entries()].sort((a, b) => b[1].n - a[1].n);
+  document.getElementById("ord").textContent = newest ? "Newest first ↓" : "Oldest first ↓";
+  const ms = [...MONTHS]; if (newest) ms.reverse();
+  for (const [k, m] of ms){ const rows = [...m.th.entries()].sort((a, b) => b[1].n - a[1].n);
     const nw = rows.filter(([id]) => born[id] === k).length, max = rows[0][1].n;
     const d = document.createElement("div"); d.className = "mo";
     d.innerHTML = `<div class="mh">${m.label} <span class="n">· ${m.n} prompts · ${rows.length} threads, ${nw} new</span></div>`;
@@ -812,11 +815,14 @@ function monthView(){ const box = document.getElementById("m"); box.innerHTML = 
       mo.onclick = () => { mo.remove(); rows.slice(10).forEach(add); }; d.appendChild(mo); }
     box.appendChild(d); } }
 monthView();
+document.getElementById("ord").onclick = () => { newest = !newest; localStorage.setItem("thoughts-oldest", newest ? "0" : "1"); monthView(); };
 function view(v){ document.getElementById("tv").style.display = v === "tree" ? "" : "none";
   document.getElementById("mv").style.display = v === "month" ? "" : "none";
-  document.getElementById("vt").classList.toggle("on", v === "tree"); document.getElementById("vm").classList.toggle("on", v === "month"); }
+  document.getElementById("vt").classList.toggle("on", v === "tree"); document.getElementById("vm").classList.toggle("on", v === "month");
+  document.getElementById("ord").style.display = v === "month" ? "" : "none"; }
 document.getElementById("vt").onclick = () => view("tree"); document.getElementById("vm").onclick = () => view("month");
 view(P.length && (P[P.length - 1].t - P[0].t) > 40 * 86400 ? "month" : "tree");
+if (newest) requestAnimationFrame(() => { const tm = document.getElementById("time"); tm.scrollTop = tm.scrollHeight; });   // start at the latest prompts
 function esc(s){ return s.replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"})[c]); }
 // timeline: one row per prompt, one column per thread
 const ROW = 22, COL = 22, X0 = 20, Y0 = 20, g = document.getElementById("g");
