@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "warren"
+version = "0.1.0"
+description = "Where the rabbit holes go: a private map of your train of thought, from your prompts to Claude Code"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+dependencies = []
+
+[project.scripts]
+warren = "warren.cli:main"
+
+[tool.setuptools]
+packages = ["warren"]
+
+[tool.setuptools.package-data]
+warren = ["demo/claude/*/*.jsonl", "demo/home/*"]
