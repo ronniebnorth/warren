@@ -43,16 +43,16 @@ def signature():
 
 
 def watch():
-    """Keep the page current: every minute, if Claude Code has saved something new, rebuild
-    (at most every 4 minutes). Only new prompts cost a Claude request; an unchanged day costs nothing."""
+    """Keep the page current: every 30 s, if Claude Code has saved something new, rebuild
+    (at most every 2 minutes, so the page is never more than about 3 minutes behind). Only new prompts cost a Claude request; an unchanged day costs nothing."""
     last = signature()
     while True:
-        time.sleep(60)
+        time.sleep(30)
         try:
             now = signature()
         except Exception:
             continue
-        if now != last and not cache["busy"] and time.time() - cache["at"] > 240:
+        if now != last and not cache["busy"] and time.time() - cache["at"] > 120:
             last = now
             build()
 
@@ -136,7 +136,7 @@ async function poll(){ const r = await (await fetch("/api/state")).json(); S = r
   $("#rf").disabled = r.busy;
   if (r.at !== shownAt || !r.data){ shownAt = r.at; render();
     if ($("#map").dataset.loaded){ if (V === "map") $("#map").dataset.stale = 1; else $("#map").src = "/map"; } }
-  again(r.busy || !r.data ? 2000 : 60000); }   // keeps checking, so a window left open stays current
+  again(r.busy || !r.data ? 2000 : 30000); }   // keeps checking, so a window left open stays current
 function render(){ const m = $("#main"); if (V === "map") return;
   if (!S || !S.data){ m.innerHTML = `<p class="note">${S && S.error ? '<span class="err">' + esc(S.error) + "</span>" : "Getting everything ready. The very first time, Claude reads all your past prompts, which can take several minutes; after that it only reads new ones."}</p>`; return; }
   const d = S.data[V]; if (d.error){ m.innerHTML = `<p class="err">${esc(d.error)}</p>`; return; }

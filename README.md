@@ -38,7 +38,7 @@ warren demo     # try it on Sam's made-up history first; nothing of yours is rea
 warren          # open your own
 ```
 
-Leave it open in its own window: it checks every minute and updates itself when you've typed something new (only new prompts cost a Claude request). `warren autostart` has it start with your computer, so the window is always ready.
+Leave it open in its own window: it updates itself within about 3 minutes when you've typed something new (only new prompts cost a Claude request). `warren autostart` has it start with your computer, so the window is always ready.
 
 The first time on your own history, Claude reads all your past prompts in batches, which can take several minutes. After that, only new prompts are read, so it opens in seconds.
 
