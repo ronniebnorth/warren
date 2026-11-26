@@ -758,7 +758,7 @@ h1{font-size:16px;margin:0 0 4px}.sub{color:#b8b8b8;font-size:12px;margin-bottom
 svg text{fill:#e8e8e8;font-size:12px;paint-order:stroke;stroke:#14161a;stroke-width:4px}
 </style></head><body>
 <div id="tree"><h1>__TITLE__</h1>
-<div class="views"><button id="vm">By month</button><button id="vt">Tree</button><button id="ord" title="Flip the month order"></button></div>
+<div class="views"><button id="vm">By month</button><button id="vt">Tree</button><button id="ord" title="Flip the month order"></button><button id="srt" title="Sort threads by size or by when you last touched them"></button></div>
 <div id="tv"><div class="sub">Each line is a thread; indented threads branched off the one above.
 Click one to read it. ↩ = times you came back to it. ▾ folds a branch.</div><div id="t"></div></div>
 <div id="mv"><div class="sub">Each month: what you spent it on, biggest first. "new" = started that month,
@@ -767,19 +767,25 @@ with the thread it grew out of. Click a month to jump the timeline there; click 
 <div id="read"><div class="sub">Click a dot or a thread.</div></div>
 <script>
 const D = __DATA__, P = D.prompts, T = D.threads, C = i => D.colors[i % D.colors.length];
+let latest = localStorage.getItem("thoughts-latest") === "1";      // threads in a month (and the tree): biggest or most recent first
 const backs = T.map(() => 0); P.forEach(p => { if (p.kind === "back") backs[p.thread]++; });
 // tree
 function node(th){ const d = document.createElement("div");
   const r = document.createElement("div"); r.className = "th"; r.dataset.id = th.id;
   r.innerHTML = `<span class="sw" style="background:${C(th.id)}"></span>${esc(th.name)} <span class="n">${th.items.length}${backs[th.id] ? " ↩" + backs[th.id] : ""}</span>`;
   r.onclick = () => showThread(th.id); d.appendChild(r);
-  const kids = T.filter(k => k.parent === th.id);
+  const kids = order(T.filter(k => k.parent === th.id));
   if (kids.length){ const k = document.createElement("div"); k.className = "kids"; kids.forEach(x => k.appendChild(node(x))); d.appendChild(k);
     const tg = document.createElement("span"); tg.className = "tg"; tg.textContent = "▾";
     tg.onclick = e => { e.stopPropagation(); const shut = k.style.display !== "none"; k.style.display = shut ? "none" : ""; tg.textContent = shut ? "▸" : "▾"; };
     r.prepend(tg); }
   return d; }
-T.filter(t => t.parent === null).forEach(t => document.getElementById("t").appendChild(node(t)));
+// the newest prompt anywhere under each thread, for "Latest first"
+const lastUnder = T.map(t => t.items[t.items.length - 1]);
+for (let i = T.length - 1; i >= 0; i--) if (T[i].parent !== null) lastUnder[T[i].parent] = Math.max(lastUnder[T[i].parent], lastUnder[i]);
+function order(list){ return latest ? list.slice().sort((a, b) => lastUnder[b.id] - lastUnder[a.id]) : list; }
+function treeView(){ const box = document.getElementById("t"); box.innerHTML = ""; order(T.filter(t => t.parent === null)).forEach(t => box.appendChild(node(t))); }
+treeView();
 // drag the bars between panels to resize them (remembered in this browser)
 document.querySelectorAll(".split").forEach(bar => { const el = document.getElementById(bar.dataset.for), left = bar.dataset.for === "tree";
   const k = "thoughts-w-" + bar.dataset.for, saved = +localStorage.getItem(k); if (saved) el.style.width = saved + "px";
@@ -792,14 +798,15 @@ document.querySelectorAll(".split").forEach(bar => { const el = document.getElem
 const MONTHS = new Map();
 P.forEach((p, i) => { const d = new Date(p.t * 1000), k = d.getFullYear() * 100 + d.getMonth();
   if (!MONTHS.has(k)) MONTHS.set(k, {label: d.toLocaleString("en-US", {month: "long", year: "numeric"}), first: i, n: 0, th: new Map()});
-  const m = MONTHS.get(k); m.n++; const e = m.th.get(p.thread) || {n: 0, first: i}; e.n++; m.th.set(p.thread, e); });
+  const m = MONTHS.get(k); m.n++; const e = m.th.get(p.thread) || {n: 0, first: i}; e.n++; e.last = i; m.th.set(p.thread, e); });
 const born = T.map(t => { const d = new Date(P[t.items[0]].t * 1000); return d.getFullYear() * 100 + d.getMonth(); });
 let newest = localStorage.getItem("thoughts-oldest") !== "1";   // newest month on top unless flipped
 function monthView(){ const box = document.getElementById("m"); box.innerHTML = "";
   document.getElementById("ord").textContent = newest ? "Newest first ↓" : "Oldest first ↓";
   const ms = [...MONTHS]; if (newest) ms.reverse();
-  for (const [k, m] of ms){ const rows = [...m.th.entries()].sort((a, b) => b[1].n - a[1].n);
-    const nw = rows.filter(([id]) => born[id] === k).length, max = rows[0][1].n;
+  document.getElementById("srt").textContent = latest ? "Latest first" : "Biggest first";
+  for (const [k, m] of ms){ const rows = [...m.th.entries()].sort((a, b) => latest ? b[1].last - a[1].last : b[1].n - a[1].n);
+    const nw = rows.filter(([id]) => born[id] === k).length, max = Math.max(...rows.map(r => r[1].n));
     const d = document.createElement("div"); d.className = "mo";
     d.innerHTML = `<div class="mh">${m.label} <span class="n">· ${m.n} prompts · ${rows.length} threads, ${nw} new</span></div>`;
     d.firstChild.onclick = () => { document.getElementById("time").scrollTop = Y0 + ROW * m.first - 40; };
@@ -815,11 +822,12 @@ function monthView(){ const box = document.getElementById("m"); box.innerHTML = 
       mo.onclick = () => { mo.remove(); rows.slice(10).forEach(add); }; d.appendChild(mo); }
     box.appendChild(d); } }
 monthView();
+document.getElementById("srt").onclick = () => { latest = !latest; localStorage.setItem("thoughts-latest", latest ? "1" : "0"); monthView(); treeView(); };
 document.getElementById("ord").onclick = () => { newest = !newest; localStorage.setItem("thoughts-oldest", newest ? "0" : "1"); monthView(); };
 function view(v){ document.getElementById("tv").style.display = v === "tree" ? "" : "none";
   document.getElementById("mv").style.display = v === "month" ? "" : "none";
   document.getElementById("vt").classList.toggle("on", v === "tree"); document.getElementById("vm").classList.toggle("on", v === "month");
-  document.getElementById("ord").style.display = v === "month" ? "" : "none"; }
+  document.getElementById("ord").style.display = v === "month" ? "" : "none"; }   // the sort button works in both views
 document.getElementById("vt").onclick = () => view("tree"); document.getElementById("vm").onclick = () => view("month");
 view(P.length && (P[P.length - 1].t - P[0].t) > 40 * 86400 ? "month" : "tree");
 if (newest) requestAnimationFrame(() => { const tm = document.getElementById("time"); tm.scrollTop = tm.scrollHeight; });   // start at the latest prompts
