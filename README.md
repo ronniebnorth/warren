@@ -4,6 +4,12 @@
 
 If your mind goes down every rabbit hole along the way, Warren shows you the whole network: what you were doing, what you jumped to, which holes you left open, and which ideas keep coming back. Nobody has to label anything. Claude reads your prompts and names the threads itself.
 
+> "For it shows things that were, and things that are, and things that yet may be. But which it is that he sees, even the wisest cannot always tell."
+>
+> Galadriel, on her Mirror, in J.R.R. Tolkien's *The Fellowship of the Ring*
+
+Warren's Map and Trail are the things that were, Now is the things that are, and Ahead is the things that yet may be. Like the Mirror, it can't always tell which is which, so it keeps score of its own forecasts.
+
 ![The Trail tab](docs/trail.png)
 
 ## What you get
