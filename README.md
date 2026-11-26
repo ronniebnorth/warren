@@ -13,7 +13,7 @@ Four tabs, in one page that runs on your own computer:
 | Tab | What it shows |
 | --- | --- |
 | **Trail** | The thread you're in, then the holes you left open, newest first, each with a line on where it stood. For finding your way back after a tangent. |
-| **Map** | Every prompt, sorted into threads, by month or as a tree of what branched off what, plus a timeline. Click anything to read it. |
+| **Map** | Every prompt, sorted into threads, by month (newest or oldest first) or as a tree of what branched off what, plus a timeline. Sort threads biggest first or latest first; drag the panel edges to resize. Click anything to read it. |
 | **Now** | The last week against your usual: where your time went, what's gone quiet, how much you're jumping around. |
 | **Ahead** | Threads that tend to come back about now, a calendar of when the others are due, and the next four weeks by area. Patterns, not advice. It saves a forecast each day and keeps score of how many came true. |
 
