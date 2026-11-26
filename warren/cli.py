@@ -7,6 +7,7 @@
     warren next         where you might be heading: comebacks due, a comeback calendar, the score
     warren map          just the map, as a page
     warren schedule     save a forecast once a day by itself (adds a line to your crontab; asks first)
+    warren autostart    start Warren when the computer starts, so a window left open just works (asks first)
     warren demo         try it on a made-up person's history (nothing of yours is read)
     warren help         this
 
@@ -31,7 +32,7 @@ def up(port):
         return False
 
 
-def start(env=None, port=None, foreground=False):
+def start(env=None, port=None, foreground=False, open_page=True):
     from . import core
     port = port or int(os.environ.get("WARREN_PORT", "8530"))
     url = f"http://127.0.0.1:{port}"
@@ -62,7 +63,8 @@ def start(env=None, port=None, foreground=False):
                 break
             time.sleep(0.3)
         print(f"Warren started at {url} (`warren stop` to stop it).")
-    webbrowser.open(url)
+    if open_page:
+        webbrowser.open(url)
 
 
 def stop():
@@ -93,6 +95,22 @@ def schedule():
     print("Added. `crontab -e` to remove it.")
 
 
+def autostart():
+    line = f"@reboot sleep 45 && {sys.executable} -m warren.cli start  # warren-autostart"
+    if not shutil.which("crontab"):
+        print("No crontab here. Start Warren with `warren` after each restart, or add `warren start` to your startup apps.")
+        return
+    cur = subprocess.run(["crontab", "-l"], capture_output=True, text=True).stdout
+    if "# warren-autostart" in cur:
+        print("Already set to start at boot."); return
+    print("This adds one line to your crontab, so Warren starts (without opening a window) when the computer does:\n  " + line)
+    if input("Add it? [y/N] ").strip().lower() != "y":
+        print("Not added."); return
+    path = os.environ.get("PATH", "")
+    subprocess.run(["crontab", "-"], input=cur + f"PATH={path}\n" * ("PATH=" not in cur) + line + "\n", text=True, check=True)
+    print("Added. `crontab -e` to remove it.")
+
+
 def demo():
     src = os.path.join(HERE, "demo")
     home = tempfile.mkdtemp(prefix="warren-demo-")
@@ -112,6 +130,10 @@ def main(argv=None):
     from . import core
     if cmd == "open":
         start()
+    elif cmd == "start":                       # start without opening a window (used at boot)
+        start(open_page=False)
+    elif cmd == "autostart":
+        autostart()
     elif cmd == "stop":
         stop()
     elif cmd == "where":

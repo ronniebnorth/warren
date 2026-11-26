@@ -36,6 +36,27 @@ def build():
             cache["busy"] = False
 
 
+def signature():
+    """Changes when Claude Code saves anything (a cheap check; no Claude call)."""
+    files = tt.transcripts() + (tt.glob.glob(os.path.join(tt.NOTES, "*")) if tt.NOTES else [])
+    return sum(os.path.getmtime(x) + os.path.getsize(x) for x in files), len(files)
+
+
+def watch():
+    """Keep the page current: every minute, if Claude Code has saved something new, rebuild
+    (at most every 4 minutes). Only new prompts cost a Claude request; an unchanged day costs nothing."""
+    last = signature()
+    while True:
+        time.sleep(60)
+        try:
+            now = signature()
+        except Exception:
+            continue
+        if now != last and not cache["busy"] and time.time() - cache["at"] > 240:
+            last = now
+            build()
+
+
 class H(BaseHTTPRequestHandler):
     def log_message(self, *a):
         pass
@@ -98,27 +119,30 @@ main{padding:18px;max-width:1100px}#map{display:none;height:calc(100vh - 58px);w
 <div class="right"><span id="st"></span><button class="btn" id="rf">Refresh</button></div></header>
 <main id="main"></main><iframe id="map"></iframe>
 <script>
-let S = null, V = localStorage.getItem("warren-view") || "trail";
+let S = null, V = localStorage.getItem("warren-view") || "trail", shownAt = 0;
+const openCards = new Set();
 const $ = s => document.querySelector(s), esc = s => String(s ?? "").replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"})[c]);
 const pct = v => Math.round(v) + "%";
 document.querySelectorAll("nav button").forEach(b => b.onclick = () => show(b.dataset.v));
-$("#rf").onclick = async () => { await fetch("/api/refresh", {method: "POST"}); poll(); };
+let timer; const again = ms => { clearTimeout(timer); timer = setTimeout(poll, ms); };
+$("#rf").onclick = async () => { await fetch("/api/refresh", {method: "POST"}); again(300); };
 function show(v){ V = v; localStorage.setItem("warren-view", v);
   document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
   $("#map").style.display = v === "map" ? "block" : "none"; document.body.style.overflow = v === "map" ? "hidden" : ""; $("#main").style.display = v === "map" ? "none" : "block";
-  if (v === "map" && !$("#map").dataset.loaded){ $("#map").src = "/map"; $("#map").dataset.loaded = 1; }
+  if (v === "map" && (!$("#map").dataset.loaded || $("#map").dataset.stale)){ $("#map").src = "/map"; $("#map").dataset.loaded = 1; delete $("#map").dataset.stale; }
   render(); }
 async function poll(){ const r = await (await fetch("/api/state")).json(); S = r;
   $("#st").textContent = r.busy ? "Claude is sorting your newest prompts…" : r.at ? "updated " + new Date(r.at * 1000).toLocaleTimeString([], {hour: "numeric", minute: "2-digit"}) : "";
-  $("#rf").disabled = r.busy; render();
-  if (r.busy || !r.data) setTimeout(poll, 2000);
-  else if ($("#map").dataset.loaded && $("#map").dataset.at != r.at){ $("#map").dataset.at = r.at; $("#map").src = "/map"; } }
+  $("#rf").disabled = r.busy;
+  if (r.at !== shownAt || !r.data){ shownAt = r.at; render();
+    if ($("#map").dataset.loaded){ if (V === "map") $("#map").dataset.stale = 1; else $("#map").src = "/map"; } }
+  again(r.busy || !r.data ? 2000 : 60000); }   // keeps checking, so a window left open stays current
 function render(){ const m = $("#main"); if (V === "map") return;
   if (!S || !S.data){ m.innerHTML = `<p class="note">${S && S.error ? '<span class="err">' + esc(S.error) + "</span>" : "Getting everything ready. The very first time, Claude reads all your past prompts, which can take several minutes; after that it only reads new ones."}</p>`; return; }
   const d = S.data[V]; if (d.error){ m.innerHTML = `<p class="err">${esc(d.error)}</p>`; return; }
   m.innerHTML = ({trail, now, ahead})[V](d); }
 function trail(d){ const [cur, ...rest] = d.trail, open = rest.filter(x => x.open), done = rest.filter(x => !x.open);
-  const card = (x, c) => `<div class="card ${c}" onclick="this.classList.toggle('open')"><span class="t">${esc(x.name)}</span><span class="w">${esc(x.when)}</span>
+  const card = (x, c) => `<div class="card ${c} ${openCards.has(x.name) ? "open" : ""}" data-n="${esc(x.name)}" onclick="this.classList.toggle('open'); this.classList.contains('open') ? openCards.add(this.dataset.n) : openCards.delete(this.dataset.n)"><span class="t">${esc(x.name)}</span><span class="w">${esc(x.when)}</span>
     <div class="s">${esc(x.where || x.last)}</div><div class="ps">${x.prompts.map(p => `<div class="p"><b>${esc(p.when)}</b>${esc(p.text)}</div>`).join("")}</div></div>`;
   return `<div class="sec"><h2>You're in</h2>${card({...cur, where: "“" + cur.last + "”"}, "cur")}</div>
     <div class="sec"><h2>Holes you left open (newest first)</h2>${open.length ? open.map(x => card(x, "")).join("") : '<p class="note">Nothing else left open.</p>'}</div>
@@ -152,7 +176,7 @@ function calendar(items){ const t = new Date(); t.setHours(0, 0, 0, 0); const by
       h += `<div class="${key === t.toDateString() ? "today" : ""} ${win[key] ? "win" : ""}">${n}${(by[key] || []).map(x => `<span class="ev" title="${esc(x.name)}: every ~${x.typical} days, ±${x.spread} days">${esc(x.name)}</span>`).join("")}</div>`; }
     h += "</div></div>"; }
   return h + "</div>"; }
-show(V); poll();
+show(V); again(0);
 </script></body></html>"""
 
 
@@ -160,6 +184,7 @@ def main():
     os.makedirs(tt.OUT, exist_ok=True)
     srv = ThreadingHTTPServer(("127.0.0.1", PORT), H)
     threading.Thread(target=build, daemon=True).start()
+    threading.Thread(target=watch, daemon=True).start()
     print(f"Warren at http://127.0.0.1:{PORT}", flush=True)
     srv.serve_forever()
 

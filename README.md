@@ -38,6 +38,8 @@ warren demo     # try it on Sam's made-up history first; nothing of yours is rea
 warren          # open your own
 ```
 
+Leave it open in its own window: it checks every minute and updates itself when you've typed something new (only new prompts cost a Claude request). `warren autostart` has it start with your computer, so the window is always ready.
+
 The first time on your own history, Claude reads all your past prompts in batches, which can take several minutes. After that, only new prompts are read, so it opens in seconds.
 
 ## Commands
@@ -50,6 +52,7 @@ warren here [DAYS]  this week against your usual
 warren next         comebacks due, the comeback calendar, the score
 warren map          just the map, as a page
 warren schedule     save a forecast once a day by itself (asks before adding a crontab line)
+warren autostart    start Warren when the computer starts (asks before adding a crontab line)
 warren demo         the made-up demo
 ```
 
